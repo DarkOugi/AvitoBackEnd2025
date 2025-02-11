@@ -1,32 +1,13 @@
 package db
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
-
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
 )
 
-var dbConn *sql.DB = nil
-
-// Здесь нужен царский синглтон чтоб м раз не конектиться к бд
-func Connect(host, port, user, password, dbname string) (*sql.DB, error) {
-	if dbConn != nil {
-		return dbConn, nil
-	}
-	connStr := fmt.Sprintf(
-		"user=%s password=%s host=%s port=%s dbname=%s sslmode=disable", user, password, host, port, dbname,
-	)
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return dbConn, err
-	} else {
-		dbConn = db
-	}
-	// defer db.Close()
-
-	return dbConn, err
-
+func Connect(host, port, username, password, dbname string) (*pgx.Conn, error) {
+	str_conn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", username, password, host, port, dbname)
+	conn, err := pgx.Connect(context.Background(), str_conn)
+	return conn, err
 }
-
-// проверка бд

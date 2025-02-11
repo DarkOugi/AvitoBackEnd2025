@@ -1,13 +1,20 @@
 package initdb
 
+import (
+	"context"
+	"github.com/jackc/pgx/v5"
+)
+
 // CREATE TABLES DB
-// hash - index string
 
 var Merch = `
 	CREATE TABLE IF NOT EXISTS merch (
 		name VARCHAR(50) PRIMARY KEY,
 		cost INTEGER
 	);
+`
+var MerchIndex = `
+	CREATE INDEX idx_hash_index ON merch USING HASH (name); 
 `
 var Users = `
 	CREATE TABLE IF NOT EXISTS users (
@@ -16,25 +23,45 @@ var Users = `
 		balance INTEGER CHECK(balance >= 0)
 	);
 `
+var UsersIndex = `
+	CREATE INDEX idx_hash_index ON users USING HASH (login);
+`
 
 // добавить дату при создании строки
 var MerchUser = `
 	CREATE TABLE IF NOT EXISTS MerchUsers (
 		id SERIAL PRIMARY KEY,
 		merch_id VARCHAR(50) REFERENCES merch(name),
-		user_id VARCHAR(50) REFERENCES users(login)
+		user_id VARCHAR(50) REFERENCES users(login),
+	    cost INTEGER,
+	    transactionTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
+`
+var MerchUIndex = `
+	CREATE INDEX IF NOT EXISTS idx_hash_index ON MerchUsers USING HASH (merch_id);
+`
+var UserMIndex = `
+	CREATE INDEX IF NOT EXISTS  idx_hash_index ON MerchUsers USING HASH (user_id);
 `
 var UserToUser = `
 	CREATE TABLE IF NOT EXISTS UserToUser (
 		id SERIAL PRIMARY KEY,
 		from_id VARCHAR(50) REFERENCES users(login),
-		to_id VARCHAR(50) REFERENCES users(login)
+		to_id VARCHAR(50) REFERENCES users(login),
+	    cost INTEGER,
+	    transactionTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 `
 
+var FromIndex = `
+	CREATE INDEX IF NOT EXISTS idx_hash_index ON UserToUser USING HASH (from_id);
+`
+var ToIndex = `
+	CREATE INDEX IF NOT EXISTS idx_hash_index ON UserToUsers USING HASH (to_id);
+`
+
 // INSERT EXAMPLES
-var InsertMerchValues = `
+var insertMerchValues = `
 	INSERT INTO merch (name,cost)
 	VALUES
 		('t-shirt', 80),
@@ -49,7 +76,32 @@ var InsertMerchValues = `
 		('pink-hoody', 500)
 	;
 `
+var tables = []string{Users, Merch, UserToUser, MerchUser}
+var indexes = []string{UsersIndex, MerchIndex, MerchUIndex, UserMIndex, FromIndex, ToIndex}
 
-// func Init_mech() (string, string) {
-// 	return merch_init_table, merch_init_values
-// }
+func CreateTables(db *pgx.Conn) error {
+	for _, table := range tables {
+		_, err := db.Exec(context.Background(), table)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func CreateIndex(db *pgx.Conn) error {
+	for _, index := range indexes {
+		_, err := db.Exec(context.Background(), index)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func InsertValue(db *pgx.Conn) error {
+	_, err := db.Exec(context.Background(), insertMerchValues)
+	if err != nil {
+		return err
+	}
+	return nil
+}
