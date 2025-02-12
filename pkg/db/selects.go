@@ -7,7 +7,7 @@ import (
 
 // получить хэшированный пароль и баланс пользователя
 var selectUserInfo = `
-	SELECT password,balance FROM users
+	SELECT password,balance FROM Users
 	WHERE login = $1
 `
 
@@ -19,40 +19,54 @@ func GetUserInfo(db *pgx.Conn, login string) (string, int, error) {
 	return password, balance, err
 }
 
+// осздать пользователя
+
+func InitUser(db *pgx.Conn, login, password string) error {
+	insertUser := "INSERT INTO Users (login,password,balance) VALUES ($1,$2,1000);"
+	_, err := db.Exec(context.Background(), insertUser, login, password)
+
+	return err
+}
+
 // получить название мерча его прайс и колличество
 var infoMerch = `
-	WITH mu AS (
 	SELECT count(*) AS cnt,merch_id FROM MerchUsers
 	WHERE user_id = $1
 	GROUP BY merch_id
-	)
-	SELECT name,cost,cnt FROM merch
-	JOIN mu on mu.merch_id = name 
 `
 
-func getMerchInfo(db *pgx.Conn, login string) map[string]map[string]int {
+type Merch struct {
+	name string
+	cnt  int
+}
+
+func getMerchInfo(db *pgx.Conn, login string) []*Merch {
 	rowsMerch, err := db.Query(context.Background(), infoMerch, login)
 	if err != nil {
 		return nil
 	}
 	defer rowsMerch.Close()
 
-	merchInfo := map[string]map[string]int{}
+	var merch []*Merch
 	for rowsMerch.Next() {
 		var name string
 		var cnt int
-		var cost int
-		err := rowsMerch.Scan(&name, &cost, &cnt)
+		err := rowsMerch.Scan(&name, &cnt)
 
 		if err == nil {
-			merchCostCount := map[string]int{
-				"cnt":  cnt,
-				"cost": cost,
+			m := Merch{
+				cnt:  cnt,
+				name: name,
 			}
-			merchInfo[name] = merchCostCount
+			//merchCostCount := map[string]int{
+			//	"cnt":  cnt,
+			//	"cost": cost,
+			//}
+			//merchInfo[name] = merchCostCount
+			merch = append(merch, &m)
 		}
 	}
-	return merchInfo
+	return merch
 }
 
 // получить истории трат и зачислений пользователя
@@ -66,29 +80,28 @@ var toUserInfo = `
 	WHERE to_id = $1
 `
 
-type UserFromTo struct {
-	name        string
-	cost        int
-	transaction float64 // тут скорее всего будет тип время
+type User struct {
+	name string
+	cost int
+	//transaction float64 // тут скорее всего будет тип время
 }
 
-func getUserToUserInfo(db *pgx.Conn, sql, login string) []*UserFromTo {
+func getUserToUserInfo(db *pgx.Conn, sql, login string) []*User {
 	rows, err := db.Query(context.Background(), sql, login)
 	if err != nil {
 		return nil
 	}
 	defer rows.Close()
-	var history []*UserFromTo
+	var history []*User
 	for rows.Next() {
 		var user string
 		var cost int
-		var transaction float64
-		err := rows.Scan(&user, &cost, &transaction)
+		//var transaction float64
+		err := rows.Scan(&user, &cost)
 		if err == nil {
-			u := UserFromTo{
-				name:        user,
-				cost:        cost,
-				transaction: transaction,
+			u := User{
+				name: user,
+				cost: cost,
 			}
 			history = append(history, &u)
 		}
@@ -97,9 +110,9 @@ func getUserToUserInfo(db *pgx.Conn, sql, login string) []*UserFromTo {
 }
 
 // получить полную информацию о пользователе(история покупок + зачисления + списания + текущий баланс)
-func GetInfo(db *pgx.Conn, login string) (map[string]map[string]int, int, []*UserFromTo, []*UserFromTo) {
-	merchInfo := getMerchInfo(db, login)
-	_, balanceInfo, _ := GetUserInfo(db, login)
+func GetInfo(db *pgx.Conn, login string) ([]*Merch, int, []*User, []*User) {
+	merchInfo := getMerchInfo(db, login)        //right
+	_, balanceInfo, _ := GetUserInfo(db, login) //right
 	fromUserInfo := getUserToUserInfo(db, fromUserInfo, login)
 	toUserInfo := getUserToUserInfo(db, toUserInfo, login)
 	return merchInfo, balanceInfo, fromUserInfo, toUserInfo

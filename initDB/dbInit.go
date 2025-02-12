@@ -8,31 +8,31 @@ import (
 // CREATE TABLES DB
 
 var Merch = `
-	CREATE TABLE IF NOT EXISTS merch (
+	CREATE TABLE IF NOT EXISTS Merch (
 		name VARCHAR(50) PRIMARY KEY,
 		cost INTEGER
 	);
 `
 var MerchIndex = `
-	CREATE INDEX idx_hash_index ON merch USING HASH (name); 
+	CREATE INDEX IF NOT EXISTS idx_hash_index ON Merch USING HASH (name); 
 `
 var Users = `
-	CREATE TABLE IF NOT EXISTS users (
+	CREATE TABLE IF NOT EXISTS Users (
 		login VARCHAR(50) PRIMARY KEY,
-		password VARCHAR(50),
+		password VARCHAR(512),
 		balance INTEGER CHECK(balance >= 0)
 	);
 `
 var UsersIndex = `
-	CREATE INDEX idx_hash_index ON users USING HASH (login);
+	CREATE INDEX IF NOT EXISTS idx_hash_index ON Users USING HASH (login);
 `
 
 // добавить дату при создании строки
 var MerchUser = `
 	CREATE TABLE IF NOT EXISTS MerchUsers (
 		id SERIAL PRIMARY KEY,
-		merch_id VARCHAR(50) REFERENCES merch(name),
-		user_id VARCHAR(50) REFERENCES users(login),
+		merch_id VARCHAR(50) NOT NULL,
+	    user_id VARCHAR(50) NOT NULL,
 	    cost INTEGER,
 	    transactionTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
@@ -46,8 +46,8 @@ var UserMIndex = `
 var UserToUser = `
 	CREATE TABLE IF NOT EXISTS UserToUser (
 		id SERIAL PRIMARY KEY,
-		from_id VARCHAR(50) REFERENCES users(login),
-		to_id VARCHAR(50) REFERENCES users(login),
+		from_id VARCHAR(50) NOT NULL,
+	    to_id VARCHAR(50) NOT NULL,
 	    cost INTEGER,
 	    transactionTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
@@ -62,7 +62,7 @@ var ToIndex = `
 
 // INSERT EXAMPLES
 var insertMerchValues = `
-	INSERT INTO merch (name,cost)
+	INSERT INTO Merch (name,cost)
 	VALUES
 		('t-shirt', 80),
 		('cup', 20),
@@ -76,7 +76,12 @@ var insertMerchValues = `
 		('pink-hoody', 500)
 	;
 `
-var tables = []string{Users, Merch, UserToUser, MerchUser}
+var tables = []string{
+	Users,
+	//Merch,
+	//UserToUser,
+	//MerchUser,
+}
 var indexes = []string{UsersIndex, MerchIndex, MerchUIndex, UserMIndex, FromIndex, ToIndex}
 
 func CreateTables(db *pgx.Conn) error {
