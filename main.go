@@ -1,12 +1,11 @@
 package main
 
 import (
-	initdb "avito/initDB"
 	"avito/pkg/db"
+	"avito/pkg/jwt"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"github.com/valyala/fasthttp"
 )
 
@@ -14,65 +13,69 @@ type JsUser struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
+type JsUserToUser struct {
+	JWT    string `json:"security"`
+	ToUser string `json:"toUser"`
+	Amount int    `json:"amount"`
+}
+type OnlyToken struct {
+	JWT string `json:"security"`
+}
 
-var conn *pgx.Conn
-
-// для инита базы данных
-//func main() {
-//	db, err := pg.Connect("localhost", "5432", "avito", "0000", "avitodb")
-//	if err != nil {
-//		fmt.Printf("Connect to db %s\n", err.Error())
-//	}
-//	err = initDB.CreateTables(db)
-//	if err != nil {
-//		fmt.Printf("Error create table  %s\n", err.Error())
-//	}
-//	err = initDB.CreateIndex(db)
-//	if err != nil {
-//		fmt.Printf("Error create index  %s\n", err.Error())
-//	}
-//	err = initDB.InsertValue(db)
-//	if err != nil {
-//		fmt.Printf("Error insert to table  %s\n", err.Error())
-//	}
+//type JsInfo struct {
+//	balance     int
+//	merch       []db.Merch
+//	coinHistory map[string]*JsUserInfo
+//}
 //
+//type JsUserInfo struct {
 //}
 
-//	func main() {
-//		// create, insert := initdb.Init_mech()
-//		// db, err := pg.Connect("localhost", "5432", "avito", "0000", "avitodb")
-//		// if err != nil {
-//		// 	fmt.Printf("Connect to db %s\n", err.Error())
-//		// } else {
-//		// 	_, err = db.Exec(create)
-//		// 	if err != nil {
-//		// 		fmt.Printf("Create table err: %s\n", err.Error())
-//		// 	} else {
-//		// 		fmt.Printf("Create table success\n")
-//		// 	}
-//		// 	in, err := db.Exec(insert)
-//		// 	if err != nil {
-//		// 		fmt.Printf("Create rows err: %s\n", err.Error())
-//		// 		panic(err)
-//		// 	} else {
-//		// 		fmt.Printf("Insert table %d rows success\n", in)
-//		// 	}
-//		// 	defer db.Close()
-//		// }
-//		// q := token.MetaJWT("Denis.Zhilin")
-//		// fmt.Println(q)
-//		fmt.Println(pg.HashPassword("asdadqwq212e1d2wd"))
-//
-// }
+var pSQL *db.PostgresDB
+
 func handler(ctx *fasthttp.RequestCtx) {
 	switch string(ctx.Path()) {
-	case "/":
-		ctx.SetContentType("text/plain; charset=utf-8")
-		ctx.SetBody([]byte("Welcome to the fasthttp server"))
 	case "/api/info":
-		return
+		body := ctx.Request.Body()
+		var to OnlyToken
+		// как будто нужно ограничивать длинну
+		if len(body) > 512 {
+			fmt.Println("Слишком большой запрос")
+		}
+
+		err := json.Unmarshal(body, &to)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		t, _ := jwt.GetInfoFromToken(to.JWT)
+		balance, merch, from, to1, err1 := pSQL.GetInfo(t.User)
+		if err1 == nil {
+			fmt.Println(balance)
+			fmt.Println(merch)
+			fmt.Println(from)
+			fmt.Println(to1)
+		}
+
 	case "/api/sendCoin":
-		return
+		body := ctx.Request.Body()
+		var to JsUserToUser
+		// как будто нужно ограничивать длинну
+		if len(body) > 512 {
+			fmt.Println("Слишком большой запрос")
+		}
+
+		err := json.Unmarshal(body, &to)
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		t, _ := jwt.GetInfoFromToken(to.JWT)
+		err = pSQL.SendCoin(t.User, to.ToUser, to.Amount)
+		if err == nil {
+			fmt.Println("TRANSACTION SUCCESS")
+		} else {
+			fmt.Printf("%s\n", err)
+		}
+
 	case "/api/buy/{item}":
 		return
 	case "/api/auth":
@@ -92,12 +95,15 @@ func handler(ctx *fasthttp.RequestCtx) {
 			pass := db.HashPassword(user.Password)
 			fmt.Printf("HASH PASSWORD %s\n", pass)
 
-			dbPass, _, errC := db.GetUserInfo(conn, user.Login)
+			dbPass, _, errC := pSQL.GetUserInfo(user.Login)
 			fmt.Printf("new Pass %s", errC)
 			if dbPass != "" && dbPass == pass {
-				fmt.Println("YES YES YES")
+				token, err := jwt.GenerateTokenAccess(user.Login)
+				if err == nil {
+					fmt.Println(token)
+				}
 			} else if dbPass == "" { // сюда более умную проверку
-				err := db.InitUser(conn, user.Login, pass)
+				err := pSQL.InitUser(user.Login, pass)
 				if err == nil {
 					fmt.Println("User Create")
 				}
@@ -111,19 +117,22 @@ func handler(ctx *fasthttp.RequestCtx) {
 
 func main() {
 	var err error
-	if conn == nil {
-
-		conn, err = db.Connect("localhost", "5432", "avito", "0000", "avitodb")
+	if pSQL == nil {
+		pSQL, err = db.GetConnect("localhost", "5432", "avito", "0000", "avitodb")
 		if err != nil {
+			fmt.Println(err)
 			panic(err)
 		}
 	}
-	defer conn.Close(context.Background())
-	err = initdb.CreateTables(conn)
+	defer pSQL.Conn.Close(context.Background())
 	if err != nil {
 		fmt.Printf("Error create table  %s\n", err.Error())
 	}
 	if err := fasthttp.ListenAndServe(":8080", handler); err != nil {
 		panic(err)
 	}
+	//decode := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiYmFkZGF5In0.wr_9TpqhbB9ASJ01UbaXirypTHkEuZHta-15YoaR2Xg"
+	//t, _ := jwt.GetInfoFromToken(decode)
+	//fmt.Printf(t.User)
+
 }

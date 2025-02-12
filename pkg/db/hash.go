@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 )
 
+// хранить пароль в чистом виде нельзя - так что спрячем )))
+
 func HashPassword(password string) string {
 	sha512 := sha512.New()
 

@@ -2,26 +2,26 @@ package db
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5"
+	"fmt"
 )
 
 // получить хэшированный пароль и баланс пользователя
 
-func GetUserInfo(db *pgx.Conn, login string) (string, int, error) {
+func (db *PostgresDB) GetUserInfo(login string) (string, int, error) {
 	var password string
 	var balance int
 
 	selectUserInfo := "SELECT password,balance FROM Users WHERE login = $1"
-	err := db.QueryRow(context.Background(), selectUserInfo, login).Scan(&password, &balance)
+	err := db.Conn.QueryRow(context.Background(), selectUserInfo, login).Scan(&password, &balance)
 
 	return password, balance, err
 }
 
 // создать пользователя
 
-func InitUser(db *pgx.Conn, login, password string) error {
+func (db *PostgresDB) InitUser(login, password string) error {
 	insertUser := "INSERT INTO Users (login,password,balance) VALUES ($1,$2,1000);"
-	_, err := db.Exec(context.Background(), insertUser, login, password)
+	_, err := db.Conn.Exec(context.Background(), insertUser, login, password)
 
 	return err
 }
@@ -33,9 +33,9 @@ type Merch struct {
 	cnt  int
 }
 
-func getMerchInfo(db *pgx.Conn, login string) ([]*Merch, error) {
+func (db *PostgresDB) getMerchInfo(login string) ([]*Merch, error) {
 	infoMerch := "SELECT count(*) AS cnt,merch_id FROM MerchUsers WHERE user_id = $1 GROUP BY merch_id"
-	rowsMerch, err := db.Query(context.Background(), infoMerch, login)
+	rowsMerch, err := db.Conn.Query(context.Background(), infoMerch, login)
 
 	if err != nil {
 		return nil, err
@@ -66,11 +66,12 @@ func getMerchInfo(db *pgx.Conn, login string) ([]*Merch, error) {
 type User struct {
 	name string
 	cost int
-	//transaction float64 // тут скорее всего будет тип время
+	//transaction float64 // в задании не используется, но в целом позитивное поле
 }
 
-func getUserToUserInfo(db *pgx.Conn, sql, login string) ([]*User, error) {
-	rows, err := db.Query(context.Background(), sql, login)
+func (db *PostgresDB) getUserToUserInfo(sql, login string) ([]*User, error) {
+	fmt.Printf("LOGIN %s\n", login)
+	rows, err := db.Conn.Query(context.Background(), sql, login)
 	if err != nil {
 		return nil, err
 	}
@@ -98,24 +99,45 @@ func getUserToUserInfo(db *pgx.Conn, sql, login string) ([]*User, error) {
 
 // получить полную информацию о пользователе(история покупок + зачисления + списания + текущий баланс)
 
-func GetInfo(db *pgx.Conn, login string) ([]*Merch, int, []*User, []*User) {
-	merchInfo, _ := getMerchInfo(db, login) //right
+func (db *PostgresDB) GetInfo(login string) (int, []*Merch, []*User, []*User, error) {
+	var err error
 
-	_, balanceInfo, _ := GetUserInfo(db, login) //right
+	var balanceInfo int
 
-	fromUserInfoQuery := "SELECT to_id,cost,transactionTime FROM UserToUser WHERE from_id = $1"
-	fromUserInfo, _ := getUserToUserInfo(db, fromUserInfoQuery, login)
+	var merchInfo []*Merch
 
-	toUserInfoQuery := "SELECT to_id,cost,transactionTime FROM UserToUser WHERE to_id = $1"
-	toUserInfo, _ := getUserToUserInfo(db, toUserInfoQuery, login)
+	var fromUserInfo []*User
+	var toUserInfo []*User
 
-	return merchInfo, balanceInfo, fromUserInfo, toUserInfo
+	_, balanceInfo, err = db.GetUserInfo(login)
+	if err != nil {
+		return balanceInfo, merchInfo, fromUserInfo, toUserInfo, err
+	}
+
+	merchInfo, err = db.getMerchInfo(login)
+	if err != nil {
+		fmt.Printf(" Merch %s", err)
+	}
+
+	fromUserInfoQuery := "SELECT to_id,cost FROM UserToUser WHERE from_id = $1"
+	fromUserInfo, err = db.getUserToUserInfo(fromUserInfoQuery, login)
+	if err != nil {
+		fmt.Printf("From User %s", err)
+	}
+
+	toUserInfoQuery := "SELECT from_id,cost FROM UserToUser WHERE to_id = $1"
+	toUserInfo, err = db.getUserToUserInfo(toUserInfoQuery, login)
+	if err != nil {
+		fmt.Printf("To User %s", err)
+	}
+
+	return balanceInfo, merchInfo, fromUserInfo, toUserInfo, err
 }
 
 // БЛОК ЗАПРОСОВ С ТРАНЗАКЦИЯМИ
 
-func BuyItem(db *pgx.Conn, login, merch string) error {
-	tx, err := db.Begin(context.Background())
+func (db *PostgresDB) BuyItem(login, merch string) error {
+	tx, err := db.Conn.Begin(context.Background())
 	if err != nil {
 		return err
 	}
@@ -141,8 +163,8 @@ func BuyItem(db *pgx.Conn, login, merch string) error {
 	return nil
 }
 
-func SendCoin(db *pgx.Conn, from, to string, cost int) error {
-	tx, err := db.Begin(context.Background())
+func (db *PostgresDB) SendCoin(from, to string, cost int) error {
+	tx, err := db.Conn.Begin(context.Background())
 	if err != nil {
 		return err
 	}

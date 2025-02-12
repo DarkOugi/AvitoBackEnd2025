@@ -1,23 +1,35 @@
 package jwt
 
 import (
-	"fmt"
-
 	"github.com/dgrijalva/jwt-go"
 )
 
 var jwtSecretKey = []byte("testJWT")
 
-func MetaJWT(user string) string {
+func GenerateTokenAccess(user string) (string, error) {
 	payload := jwt.MapClaims{
 		"user": user,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
 	t, err := token.SignedString(jwtSecretKey)
-	if err != nil {
-		fmt.Printf("Error jwt token created: %s", err.Error())
-		return ""
+
+	return t, err
+}
+
+type UserClaims struct {
+	User string `json:"user"`
+	jwt.StandardClaims
+}
+
+func GetInfoFromToken(token string) (*UserClaims, error) {
+
+	t, err := jwt.ParseWithClaims(token, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecretKey, nil
+	})
+
+	if claims, ok := t.Claims.(*UserClaims); ok && t.Valid {
+		return claims, nil
 	} else {
-		return t
+		return claims, err
 	}
 }
