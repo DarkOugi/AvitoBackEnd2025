@@ -7,7 +7,7 @@ import (
 )
 
 func Connect(host, port, username, password, dbname string) (*pgx.Conn, error) {
-	str_conn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", username, password, host, port, dbname)
-	conn, err := pgx.Connect(context.Background(), str_conn)
+	strСonn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", username, password, host, port, dbname)
+	conn, err := pgx.Connect(context.Background(), strСonn)
 	return conn, err
 }
