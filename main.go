@@ -1,6 +1,7 @@
 package main
 
 import (
+	auth2 "avito/pkg/auth"
 	"avito/pkg/db"
 	"avito/pkg/js"
 	"avito/pkg/jwt"
@@ -143,6 +144,50 @@ func buyItem(ctx *fasthttp.RequestCtx) {
 	}
 
 }
+func auth(ctx *fasthttp.RequestCtx) {
+	body := ctx.Request.Body()
+	us, err := js.GetFromJSUser(body)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	if flag := auth2.CheckLogin(us.Login); flag {
+		if us.Password != "" {
+			pass := auth2.HashPassword(us.Password)
+			passSql, _, _ := pSQL.GetUserInfo(us.Login)
+
+			if pass == passSql {
+				jwtlog, _ := jwt.GenerateTokenAccess(us.Login)
+				jsToken, _ := js.ToJsToken(jwtlog)
+				ctx.SetContentType("application/json")
+				ctx.SetStatusCode(fasthttp.StatusOK)
+				ctx.SetBody(jsToken)
+
+			} else {
+				cerr := pSQL.InitUser(us.Login, pass)
+				if cerr == nil {
+					jwtlog, _ := jwt.GenerateTokenAccess(us.Login)
+					jsToken, _ := js.ToJsToken(jwtlog)
+					ctx.SetContentType("application/json")
+					ctx.SetStatusCode(fasthttp.StatusOK)
+					ctx.SetBody(jsToken)
+				}
+			}
+		}
+	}
+}
+func sendCoin(ctx *fasthttp.RequestCtx) {
+	body := ctx.Request.Body()
+	utu, err := js.GetFromJsUserToUser(body)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	t, _ := jwt.GetInfoFromToken(utu.Security)
+	err = pSQL.SendCoin(t.User, utu.ToUser, utu.Amount)
+	if err == nil {
+		ctx.SetContentType("application/json")
+		ctx.SetStatusCode(fasthttp.StatusOK)
+	}
+}
 
 func main() {
 	var err error
@@ -159,9 +204,9 @@ func main() {
 	}
 
 	r := router.New()
-	//r.POST("/api/auth", auth)
+	r.POST("/api/auth", auth)
 	r.GET("/api/buy/{item}", buyItem)
-	//r.POST("/api/sendCoin", sendCoin)
+	r.POST("/api/sendCoin", sendCoin)
 	r.GET("/api/info", info)
 
 	if err := fasthttp.ListenAndServe(":8080", r.Handler); err != nil {

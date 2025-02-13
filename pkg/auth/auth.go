@@ -1,11 +1,18 @@
-package db
+package auth
 
 import (
 	"crypto/sha512"
 	"encoding/hex"
+	"regexp"
 )
 
-// хранить пароль в чистом виде нельзя - так что спрячем )))
+func CheckLogin(login string) bool {
+	standart := `^[a-z]*\.[a-z]*\d*@avito\.ru$`
+
+	match, _ := regexp.Match(standart, []byte(login))
+
+	return match
+}
 
 func HashPassword(password string) string {
 	sha512 := sha512.New()
