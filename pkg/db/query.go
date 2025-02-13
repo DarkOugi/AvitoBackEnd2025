@@ -29,8 +29,8 @@ func (db *PostgresDB) InitUser(login, password string) error {
 // получить название мерча и колличество имеющиеся у пользователя
 
 type Merch struct {
-	name string
-	cnt  int
+	Name string
+	Cnt  int
 }
 
 func (db *PostgresDB) getMerchInfo(login string) ([]*Merch, error) {
@@ -46,12 +46,12 @@ func (db *PostgresDB) getMerchInfo(login string) ([]*Merch, error) {
 	for rowsMerch.Next() {
 		var name string
 		var cnt int
-		err := rowsMerch.Scan(&name, &cnt)
+		err := rowsMerch.Scan(&cnt, &name)
 
 		if err == nil {
 			m := Merch{
-				cnt:  cnt,
-				name: name,
+				Cnt:  cnt,
+				Name: name,
 			}
 			merch = append(merch, &m)
 		} else {
@@ -64,8 +64,8 @@ func (db *PostgresDB) getMerchInfo(login string) ([]*Merch, error) {
 // получить истории трат и зачислений пользователя
 
 type User struct {
-	name string
-	cost int
+	Name string
+	Cost int
 	//transaction float64 // в задании не используется, но в целом позитивное поле
 }
 
@@ -85,8 +85,8 @@ func (db *PostgresDB) getUserToUserInfo(sql, login string) ([]*User, error) {
 		err := rows.Scan(&user, &cost)
 		if err == nil {
 			u := User{
-				name: user,
-				cost: cost,
+				Name: user,
+				Cost: cost,
 			}
 			history = append(history, &u)
 		} else {
@@ -136,21 +136,21 @@ func (db *PostgresDB) GetInfo(login string) (int, []*Merch, []*User, []*User, er
 
 // БЛОК ЗАПРОСОВ С ТРАНЗАКЦИЯМИ
 
-func (db *PostgresDB) BuyItem(login, merch string) error {
+func (db *PostgresDB) BuyItem(login, merch string) (err error) {
 	tx, err := db.Conn.Begin(context.Background())
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(context.Background())
 
-	updateBalanceBuyItem := "UPDATE users SET balance = balance - (SELECT cost FROM merch WHERE name = $1) WHERE login = $2;"
+	updateBalanceBuyItem := "UPDATE users SET balance = balance - (SELECT cost FROM Merch WHERE name = $1) WHERE login = $2;"
 	_, err = tx.Exec(context.Background(), updateBalanceBuyItem, merch, login)
 	if err != nil {
 		return err
 	}
 
-	insertHistoryBuyItems := "INSERT INTO MerchUsers (merch_id,user_id,cost) VALUES  ( $1, $2,cost) SELECT cost FROM merch WHERE name = $1;"
-	_, err = tx.Exec(context.Background(), insertHistoryBuyItems, merch, login)
+	insertHistoryBuyItems := "INSERT INTO merchusers (merch_id,user_id,cost) VALUES  ( $1, $2,(SELECT cost FROM merch WHERE name = $3));"
+	_, err = tx.Exec(context.Background(), insertHistoryBuyItems, merch, login, merch)
 	if err != nil {
 		return err
 	}
@@ -163,7 +163,7 @@ func (db *PostgresDB) BuyItem(login, merch string) error {
 	return nil
 }
 
-func (db *PostgresDB) SendCoin(from, to string, cost int) error {
+func (db *PostgresDB) SendCoin(from, to string, cost int) (err error) {
 	tx, err := db.Conn.Begin(context.Background())
 	if err != nil {
 		return err
