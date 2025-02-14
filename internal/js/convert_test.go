@@ -1,6 +1,7 @@
 package js
 
 import (
+	"avito/internal/entity"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -115,6 +116,91 @@ func TestToJSError(t *testing.T) {
 		got := "123asd"
 
 		_, err := ToJSError(got)
+
+		assert.Nil(t, err)
+		//assert.Equal(t, []byte(want), res, "From Json UserToUser eq = %s", got)
+	})
+}
+
+func TestToJsToken(t *testing.T) {
+	t.Run("Test correct JSON userToUser", func(t *testing.T) {
+		got := "123asd"
+
+		_, err := ToJsToken(got)
+
+		assert.Nil(t, err)
+		//assert.Equal(t, []byte(want), res, "From Json UserToUser eq = %s", got)
+	})
+}
+
+func TestToJsMerch(t *testing.T) {
+	t.Run("Test correct JSON userToUser", func(t *testing.T) {
+		got := []*entity.Merch{
+			{
+				Name: "t-shirt",
+				Cnt:  80,
+			},
+		}
+
+		merch := ToJsMerch(got)
+
+		assert.NotNil(t, merch)
+		//assert.Equal(t, []byte(want), res, "From Json UserToUser eq = %s", got)
+	})
+}
+
+func TestToJsFromUser(t *testing.T) {
+	t.Run("Test correct JSON userToUser", func(t *testing.T) {
+		got := []*entity.User{
+			{
+				Name:     "t-shirt",
+				Password: "123",
+				Cost:     80,
+			},
+		}
+
+		user := ToJsFromUser(got)
+
+		assert.NotNil(t, user)
+		//assert.Equal(t, []byte(want), res, "From Json UserToUser eq = %s", got)
+	})
+}
+
+func TestToJsToUser(t *testing.T) {
+	t.Run("Test correct JSON userToUser", func(t *testing.T) {
+		got := []*entity.User{
+			{
+				Name:     "t-shirt",
+				Password: "123",
+				Cost:     80,
+			},
+		}
+
+		user := ToJsToUser(got)
+
+		assert.NotNil(t, user)
+		//assert.Equal(t, []byte(want), res, "From Json UserToUser eq = %s", got)
+	})
+}
+
+func TestToJsInfo(t *testing.T) {
+	t.Run("Test correct JSON userToUser", func(t *testing.T) {
+		gotU := []*entity.User{
+			{
+				Name:     "t-shirt",
+				Password: "123",
+				Cost:     80,
+			},
+		}
+
+		gotM := []*entity.Merch{
+			{
+				Name: "t-shirt",
+				Cnt:  80,
+			},
+		}
+
+		_, err := ToJsInfo(100, gotM, gotU, gotU)
 
 		assert.Nil(t, err)
 		//assert.Equal(t, []byte(want), res, "From Json UserToUser eq = %s", got)

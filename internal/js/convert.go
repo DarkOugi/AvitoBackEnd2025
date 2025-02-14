@@ -3,7 +3,6 @@ package js
 import (
 	"avito/internal/entity"
 	"encoding/json"
-	"fmt"
 )
 
 // get from JSON
@@ -50,7 +49,6 @@ func ToJsToken(token string) ([]byte, error) {
 func ToJsMerch(merch []*entity.Merch) []*ToMerch {
 	merchJs := []*ToMerch{}
 	for _, el := range merch {
-		fmt.Printf("%s %d\n", el.Name, el.Cnt)
 		merchJs = append(merchJs, &ToMerch{
 			Type:     el.Name,
 			Quantity: el.Cnt,
