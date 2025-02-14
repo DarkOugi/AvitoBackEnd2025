@@ -1,7 +1,7 @@
 package js
 
 import (
-	"avito/pkg/db"
+	"avito/internal/entity"
 	"encoding/json"
 	"fmt"
 )
@@ -32,7 +32,13 @@ func GetFromJsUserToUser(userToUser []byte) (*GetUserToUser, error) {
 }
 
 // parse to JSON
+func ToJSError(err string) ([]byte, error) {
+	e := ToError{Errors: err}
 
+	be, errM := json.Marshal(e)
+
+	return be, errM
+}
 func ToJsToken(token string) ([]byte, error) {
 	t := ToToken{Token: token}
 
@@ -41,7 +47,7 @@ func ToJsToken(token string) ([]byte, error) {
 	return bt, err
 }
 
-func ToJsMerch(merch []*db.Merch) []*ToMerch {
+func ToJsMerch(merch []*entity.Merch) []*ToMerch {
 	merchJs := []*ToMerch{}
 	for _, el := range merch {
 		fmt.Printf("%s %d\n", el.Name, el.Cnt)
@@ -56,7 +62,7 @@ func ToJsMerch(merch []*db.Merch) []*ToMerch {
 	return merchJs
 }
 
-func ToJsFromUser(from []*db.User) []*ToFromUser {
+func ToJsFromUser(from []*entity.User) []*ToFromUser {
 	fromJs := []*ToFromUser{}
 	for _, el := range from {
 		fromJs = append(fromJs, &ToFromUser{
@@ -70,7 +76,7 @@ func ToJsFromUser(from []*db.User) []*ToFromUser {
 	return fromJs
 }
 
-func ToJsToUser(from []*db.User) []*ToToUser {
+func ToJsToUser(from []*entity.User) []*ToToUser {
 	fromJs := []*ToToUser{}
 	for _, el := range from {
 		fromJs = append(fromJs, &ToToUser{
@@ -84,7 +90,7 @@ func ToJsToUser(from []*db.User) []*ToToUser {
 	return fromJs
 }
 
-func ToJsInfo(balance int, merch []*db.Merch, from, to []*db.User) ([]byte, error) {
+func ToJsInfo(balance int, merch []*entity.Merch, from, to []*entity.User) ([]byte, error) {
 	merchJs := ToJsMerch(merch)
 
 	fromJs := ToJsFromUser(from)

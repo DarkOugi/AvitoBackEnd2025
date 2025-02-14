@@ -48,3 +48,7 @@ type ToInfo struct {
 	Inventory   []*ToMerch    `json:"inventory"`
 	CoinHistory ToCoinHistory `json:"coinHistory"`
 }
+
+type ToError struct {
+	Errors string `json:"errors"`
+}
