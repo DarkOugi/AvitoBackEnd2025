@@ -3,17 +3,20 @@ package db
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PostgresDB struct {
-	conn *pgx.Conn
+	conn *pgxpool.Pool
 }
 
 func NewPostgresDB(ctx context.Context, host, port, username, password, dbname string) (*PostgresDB, error) {
-	strСonn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", username, password, host, port, dbname)
+	//nolint:nosprintfhostport // тише тише тише
+	strConn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", username, password, host, port, dbname)
 
-	conn, err := pgx.Connect(ctx, strСonn)
+	conn, err := pgxpool.New(ctx, strConn)
+	// pgx.Connect(ctx, strСonn)
 	if err != nil {
 		return nil, fmt.Errorf("can't connect to db: %w", err)
 	}
@@ -21,10 +24,6 @@ func NewPostgresDB(ctx context.Context, host, port, username, password, dbname s
 	return &PostgresDB{conn: conn}, nil
 }
 
-func (db *PostgresDB) Close(ctx context.Context) error {
-	err := db.conn.Close(ctx)
-	if err != nil {
-		return fmt.Errorf("can't close connect: %w", err)
-	}
-	return nil
+func (db *PostgresDB) Close() {
+	db.conn.Close()
 }

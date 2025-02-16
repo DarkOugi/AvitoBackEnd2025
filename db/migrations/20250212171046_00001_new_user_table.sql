@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS Users (
     login VARCHAR(50) PRIMARY KEY,
     password VARCHAR(512),
-    balance INTEGER CHECK(balance >= 0)
+    balance INTEGER NOT NULL CHECK(balance >= 0)
 );
 -- +goose StatementEnd
 

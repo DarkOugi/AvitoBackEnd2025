@@ -9,7 +9,7 @@ import (
 func CheckLogin(login string) bool {
 	standart := `^[a-z]+\.[a-z]+\d*@avito\.ru$`
 
-	match, _ := regexp.Match(standart, []byte(login))
+	match, _ := regexp.MatchString(standart, login)
 
 	return match
 }

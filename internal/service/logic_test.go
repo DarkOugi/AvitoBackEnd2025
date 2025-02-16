@@ -2,6 +2,7 @@ package service
 
 import (
 	"avito/internal/entity"
+	"avito/pkg/auth"
 	"avito/pkg/jwt"
 	"context"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,6 @@ type TestRep struct {
 }
 
 func (r *TestRep) GetUserInfo(ctx context.Context, login string) (*entity.User, bool, error) {
-	//fmt.Println(correctUser.Password)
 	if r.correct {
 		if r.newUser {
 			return &entity.User{
@@ -29,7 +29,7 @@ func (r *TestRep) GetUserInfo(ctx context.Context, login string) (*entity.User, 
 		return &entity.User{
 			login,
 			0,
-			"qweqweq",
+			auth.HashPassword("qweqweq"),
 		}, true, nil
 	} else {
 		return nil, false, ErrBadAuth
@@ -86,7 +86,7 @@ func TestService_Auth(t *testing.T) {
 			correct: true,
 			newUser: false,
 		})
-		_, errAuth := sv.Auth(context.Background(), "denis.zhilin@avito.ru", "qwe")
+		_, errAuth := sv.Auth(context.Background(), email, "qwe")
 		//passJWT, _ := jwt.GenerateTokenAccess("denis.zhilin@avito.ru")
 
 		//assert.Equal(t, passJWT, hashPasswordTest)
@@ -97,10 +97,10 @@ func TestService_Auth(t *testing.T) {
 			correct: true,
 			newUser: false,
 		})
-		hashPasswordTest, errAuth := sv.Auth(context.Background(), "denis.zhilin@avito.ru", "qweqweq")
-		passJWT, _ := jwt.GenerateTokenAccess("denis.zhilin@avito.ru")
+		emailAuth, errAuth := sv.Auth(context.Background(), email, "qweqweq")
+		gotJWT, _ := jwt.GenerateTokenAccess(email)
 
-		assert.Equal(t, passJWT, hashPasswordTest)
+		assert.Equal(t, gotJWT, emailAuth)
 		assert.Nil(t, errAuth)
 	})
 	t.Run("correct Auth new User", func(t *testing.T) {
@@ -109,8 +109,8 @@ func TestService_Auth(t *testing.T) {
 			newUser: true,
 		})
 
-		hashPasswordTest, errAuth := sv.Auth(context.Background(), "denis.zhilin@avito.ru", "unHashPassword")
-		passJWT, _ := jwt.GenerateTokenAccess("denis.zhilin@avito.ru")
+		hashPasswordTest, errAuth := sv.Auth(context.Background(), email, "unHashPassword")
+		passJWT, _ := jwt.GenerateTokenAccess(email)
 
 		assert.Equal(t, passJWT, hashPasswordTest)
 		assert.Nil(t, errAuth)
@@ -124,7 +124,7 @@ func TestService_SendCoin(t *testing.T) {
 			correct: true,
 			newUser: false,
 		})
-		passJWT, _ := jwt.GenerateTokenAccess("denis.zhilin@avito.ru")
+		passJWT, _ := jwt.GenerateTokenAccess(email)
 		errSC := sv.SendCoin(context.Background(), passJWT, "asd", 2)
 		assert.Nil(t, errSC)
 	})
@@ -134,7 +134,7 @@ func TestService_SendCoin(t *testing.T) {
 			correct: false,
 			newUser: false,
 		})
-		passJWT, _ := jwt.GenerateTokenAccess("denis.zhilin@avito.ru")
+		passJWT, _ := jwt.GenerateTokenAccess(email)
 		errSC := sv.SendCoin(context.Background(), passJWT, "asd", 2)
 		assert.ErrorIs(t, errSC, ErrUnCorrectJWT)
 	})
@@ -147,7 +147,7 @@ func TestService_BuyItem(t *testing.T) {
 			correct: true,
 			newUser: false,
 		})
-		passJWT, _ := jwt.GenerateTokenAccess("denis.zhilin@avito.ru")
+		passJWT, _ := jwt.GenerateTokenAccess(email)
 		errSC := sv.BuyItem(context.Background(), "t-shirt", passJWT)
 		assert.Nil(t, errSC)
 	})
@@ -157,7 +157,7 @@ func TestService_BuyItem(t *testing.T) {
 			correct: false,
 			newUser: false,
 		})
-		passJWT, _ := jwt.GenerateTokenAccess("denis.zhilin@avito.ru")
+		passJWT, _ := jwt.GenerateTokenAccess(email)
 		errSC := sv.BuyItem(context.Background(), "t-shirt", passJWT)
 		assert.ErrorIs(t, errSC, ErrUnCorrectJWT)
 	})
@@ -170,7 +170,7 @@ func TestService_Info(t *testing.T) {
 			correct: true,
 			newUser: false,
 		})
-		passJWT, _ := jwt.GenerateTokenAccess("denis.zhilin@avito.ru")
+		passJWT, _ := jwt.GenerateTokenAccess(email)
 		_, merch, from, to, errSC := sv.Info(context.Background(), passJWT)
 		assert.IsType(t, merch, []*entity.Merch{})
 		assert.IsType(t, from, []*entity.User{})
@@ -184,7 +184,7 @@ func TestService_Info(t *testing.T) {
 			correct: false,
 			newUser: false,
 		})
-		passJWT, _ := jwt.GenerateTokenAccess("denis.zhilin@avito.ru")
+		passJWT, _ := jwt.GenerateTokenAccess(email)
 		_, _, _, _, errSC := sv.Info(context.Background(), passJWT)
 		t.Logf("\nERROR %s \n", errSC)
 		assert.ErrorIs(t, errSC, ErrUnCorrectJWT)

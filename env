@@ -1,2 +1,0 @@
-GOOSE_DRIVER=postgres
-GOOSE_DBSTRING=postgresql://avito:0000@0.0.0.0:5432/avitodb?sslmode=disable

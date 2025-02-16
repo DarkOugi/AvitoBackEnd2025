@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS Merch (
     name VARCHAR(50) PRIMARY KEY,
-    cost INTEGER CHECK(cost >= 0)
+    cost INTEGER NOT NULL CHECK(cost >= 0)
 );
 -- +goose StatementEnd
 

@@ -4,6 +4,7 @@ import (
 	"avito/internal/js"
 	"avito/internal/service"
 	"errors"
+
 	"github.com/rs/zerolog/log"
 	"github.com/valyala/fasthttp"
 )
@@ -16,12 +17,12 @@ func NewServer(sv *service.Service) *Server {
 	return &Server{service: sv}
 }
 
-func setError(ctx *fasthttp.RequestCtx, codeErr int, errMsg string) {
+func setError(ctx *fasthttp.RequestCtx, err error, codeErr int, errMsg string) {
 	errStr, errConv := js.ToJSError(errMsg)
 	if errConv != nil {
 		log.Err(errConv).Msg("Error js.ToJSError")
 	}
-
+	log.Info().Err(err).Msgf("Error")
 	ctx.SetStatusCode(codeErr)
 	ctx.SetBody(errStr)
 }
@@ -32,7 +33,7 @@ func (sv *Server) Auth(ctx *fasthttp.RequestCtx) {
 	data := ctx.Request.Body()
 	us, err := js.GetFromJSUser(data)
 	if err != nil {
-		setError(ctx, fasthttp.StatusBadRequest, "Неверный JSON")
+		setError(ctx, err, fasthttp.StatusBadRequest, "Неверный JSON")
 		return
 	}
 
@@ -40,26 +41,25 @@ func (sv *Server) Auth(ctx *fasthttp.RequestCtx) {
 	if errAuth != nil {
 		switch {
 		case errors.Is(errAuth, service.ErrBadAuth):
-			setError(ctx, fasthttp.StatusBadRequest, "Невалидный логин/пароль")
+			setError(ctx, errAuth, fasthttp.StatusBadRequest, "Невалидный логин/пароль")
 			return
 		case errors.Is(errAuth, service.ErrBadPassword):
-			setError(ctx, fasthttp.StatusUnauthorized, "Неверный логин/пароль")
+			setError(ctx, errAuth, fasthttp.StatusUnauthorized, "Неверный логин/пароль")
 			return
 		default:
-			setError(ctx, fasthttp.StatusInternalServerError, "Ошибка сервера")
+			setError(ctx, errAuth, fasthttp.StatusInternalServerError, "Ошибка сервера")
 			return
 		}
 	}
 
 	tokenJS, errJS := js.ToJsToken(tokenJWT)
 	if errJS != nil {
-		setError(ctx, fasthttp.StatusInternalServerError, "Ошибка сервера")
+		setError(ctx, errJS, fasthttp.StatusInternalServerError, "Ошибка сервера")
 		return
 	}
 
 	ctx.SetStatusCode(fasthttp.StatusOK)
 	ctx.SetBody(tokenJS)
-	return
 }
 
 func (sv *Server) Info(ctx *fasthttp.RequestCtx) {
@@ -68,7 +68,7 @@ func (sv *Server) Info(ctx *fasthttp.RequestCtx) {
 	data := ctx.Request.Body()
 	sec, err := js.GetFromJSSecurity(data)
 	if err != nil {
-		setError(ctx, fasthttp.StatusBadRequest, "Неверный JSON")
+		setError(ctx, err, fasthttp.StatusBadRequest, "Неверный JSON")
 		return
 	}
 
@@ -76,23 +76,22 @@ func (sv *Server) Info(ctx *fasthttp.RequestCtx) {
 	if errInfo != nil {
 		switch {
 		case errors.Is(errInfo, service.ErrUnCorrectJWT):
-			setError(ctx, fasthttp.StatusUnauthorized, "Невалидный токен")
+			setError(ctx, errInfo, fasthttp.StatusUnauthorized, "Невалидный токен")
 			return
 		default:
-			setError(ctx, fasthttp.StatusInternalServerError, "Ошибка сервера")
+			setError(ctx, errInfo, fasthttp.StatusInternalServerError, "Ошибка сервера")
 			return
 		}
 	}
 
 	jsonData, errJS := js.ToJsInfo(balance, merch, from, to)
 	if errJS != nil {
-		setError(ctx, fasthttp.StatusInternalServerError, "Ошибка сервера")
+		setError(ctx, errJS, fasthttp.StatusInternalServerError, "Ошибка сервера")
 		return
 	}
 
 	ctx.SetStatusCode(fasthttp.StatusOK)
 	ctx.SetBody(jsonData)
-	return
 }
 
 func (sv *Server) SendCoin(ctx *fasthttp.RequestCtx) {
@@ -101,7 +100,7 @@ func (sv *Server) SendCoin(ctx *fasthttp.RequestCtx) {
 	data := ctx.Request.Body()
 	utu, err := js.GetFromJsUserToUser(data)
 	if err != nil {
-		setError(ctx, fasthttp.StatusBadRequest, "Неверный JSON")
+		setError(ctx, err, fasthttp.StatusBadRequest, "Неверный JSON")
 		return
 	}
 
@@ -109,20 +108,19 @@ func (sv *Server) SendCoin(ctx *fasthttp.RequestCtx) {
 	if errSC != nil {
 		switch {
 		case errors.Is(errSC, service.ErrUnCorrectJWT):
-			setError(ctx, fasthttp.StatusUnauthorized, "Невалидный токен")
+			setError(ctx, errSC, fasthttp.StatusUnauthorized, "Невалидный токен")
 			return
 		case errors.Is(errSC, service.ErrLogic):
-			setError(ctx, fasthttp.StatusBadRequest, "Отправитель не может быть получателем в рамках 1 перевода")
+			setError(ctx, errSC, fasthttp.StatusBadRequest, "Отправитель не может быть получателем в рамках 1 перевода")
 			return
 		default:
-			setError(ctx, fasthttp.StatusInternalServerError, "Ошибка сервера")
+			setError(ctx, errSC, fasthttp.StatusInternalServerError, "Ошибка сервера")
 			return
 		}
 	}
 
 	ctx.SetStatusCode(fasthttp.StatusOK)
 	ctx.SetBody([]byte{})
-	return
 }
 
 func (sv *Server) BuyItem(ctx *fasthttp.RequestCtx) {
@@ -130,15 +128,15 @@ func (sv *Server) BuyItem(ctx *fasthttp.RequestCtx) {
 
 	itemAny := ctx.UserValue("item")
 	item, ok := itemAny.(string)
-	if ok == false {
-		setError(ctx, fasthttp.StatusInternalServerError, "Ошибка сервера")
+	if !ok {
+		setError(ctx, nil, fasthttp.StatusInternalServerError, "Ошибка сервера")
 		return
 	}
 
 	data := ctx.Request.Body()
 	sec, err := js.GetFromJSSecurity(data)
 	if err != nil {
-		setError(ctx, fasthttp.StatusBadRequest, "Неверный JSON")
+		setError(ctx, err, fasthttp.StatusBadRequest, "Неверный JSON")
 		return
 	}
 
@@ -146,15 +144,14 @@ func (sv *Server) BuyItem(ctx *fasthttp.RequestCtx) {
 	if errBY != nil {
 		switch {
 		case errors.Is(errBY, service.ErrUnCorrectJWT):
-			setError(ctx, fasthttp.StatusUnauthorized, "Невалидный токен")
+			setError(ctx, errBY, fasthttp.StatusUnauthorized, "Невалидный токен")
 			return
 		default:
-			setError(ctx, fasthttp.StatusInternalServerError, "Ошибка сервера")
+			setError(ctx, errBY, fasthttp.StatusInternalServerError, "Ошибка сервера")
 			return
 		}
 	}
 
 	ctx.SetStatusCode(fasthttp.StatusOK)
 	ctx.SetBody([]byte{})
-	return
 }

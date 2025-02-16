@@ -1,3 +1,4 @@
+//nolint:wrapcheck // тише тише тише
 package js
 
 import (
@@ -55,7 +56,7 @@ func ToJsMerch(merch []*entity.Merch) []*ToMerch {
 		})
 	}
 
-	//bm, err := json.Marshal(merchJs)
+	// bm, err := json.Marshal(merchJs)
 
 	return merchJs
 }
@@ -69,7 +70,7 @@ func ToJsFromUser(from []*entity.User) []*ToFromUser {
 		})
 	}
 
-	//bf, err := json.Marshal(fromJs)
+	// bf, err := json.Marshal(fromJs)
 
 	return fromJs
 }
@@ -83,7 +84,7 @@ func ToJsToUser(from []*entity.User) []*ToToUser {
 		})
 	}
 
-	//bf, err := json.Marshal(fromJs)
+	// bf, err := json.Marshal(fromJs)
 
 	return fromJs
 }

@@ -7,22 +7,20 @@ import (
 )
 
 func TestGetFromJSUser(t *testing.T) {
-	gotCorrect := []string{
+	jsCorrect := []string{
 		`{"login" : "denis.zhilin@avito.ru",    "password" : "12345"}`,
 	}
-	for _, g := range gotCorrect {
+	for _, js := range jsCorrect {
 		t.Run("Test correct JSON user", func(t *testing.T) {
 			var want = &GetUser{
 				Login:    "denis.zhilin@avito.ru",
 				Password: "12345",
 			}
 
-			res, err := GetFromJSUser([]byte(g))
+			res, err := GetFromJSUser([]byte(js))
 
-			if err != nil {
-				t.Errorf("%s", err.Error())
-			}
-			assert.Equal(t, want, res, "Parse json to struct eq = %s", g)
+			assert.Nil(t, err)
+			assert.Equal(t, want, res, "Parse json to struct eq = %s", js)
 		})
 	}
 
@@ -44,6 +42,7 @@ func TestGetFromJSUser(t *testing.T) {
 			if err == nil {
 				t.Errorf("%s", err.Error())
 			}
+
 			if want == res {
 				t.Errorf("Failed Json = %s", g)
 			}
@@ -58,14 +57,10 @@ func TestGetFromJSSecurity(t *testing.T) {
 			Security: "123asd",
 		}
 
-		got := `{ "security" : "123asd"}`
-		res, err := GetFromJSSecurity([]byte(got))
+		got, err := GetFromJSSecurity([]byte(`{ "security" : "123asd"}`))
 
-		if err != nil {
-			assert.Errorf(t, err, "Error Parse")
-		}
-
-		assert.Equal(t, want.Security, res, "From Json Security eq = %s", got)
+		assert.Nil(t, err, "Error Parse")
+		assert.Equal(t, want.Security, got, "From Json Security eq = %s", got)
 	})
 
 	//gotNotCorrect := []string{
@@ -102,11 +97,11 @@ func TestGetFromJsUserToUser(t *testing.T) {
 			Amount:   100,
 		}
 
-		got := `{ "security" : "123asd", "toUser":"den", "amount":100 }`
-		res, err := GetFromJsUserToUser([]byte(got))
+		js := `{ "security" : "123asd", "toUser":"den", "amount":100 }`
+		got, err := GetFromJsUserToUser([]byte(js))
 
 		assert.Nil(t, err)
-		assert.Equal(t, want, res, "From Json UserToUser eq = %s", got)
+		assert.Equal(t, want, got, "From Json UserToUser eq = %s", got)
 	})
 
 }

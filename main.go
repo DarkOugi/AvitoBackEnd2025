@@ -5,14 +5,28 @@ import (
 	"avito/internal/server"
 	"avito/internal/service"
 	"context"
-	"github.com/fasthttp/router"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/valyala/fasthttp"
+	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/fasthttp/router"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/valyala/fasthttp"
+)
+
+//nolint:gochecknoglobals // тише тише тише
+var (
+	dbHost     = "localhost"
+	dbPort     = "5432"
+	dbUsername = "avito"
+	dbPassword = "0000"
+	dbName     = "avitodb"
+
+	serverPort = "8080"
 )
 
 func main() {
@@ -27,17 +41,24 @@ func main() {
 		TimeFormat: time.Stamp,
 	}).Level(zerolog.DebugLevel)
 
+	flag.StringVar(&dbHost, "dbHost", dbHost, "dbHost pgx connect")
+	flag.StringVar(&dbPort, "dbPort", dbPort, "dbPort pgx connect")
+	flag.StringVar(&dbUsername, "dbUsername", dbUsername, "dbUsername pgx connect")
+	flag.StringVar(&dbPassword, "dbPassword", dbPassword, "dbPassword pgx connect")
+	flag.StringVar(&dbName, "dbName", dbName, "dbName pgx connect")
+
+	flag.StringVar(&serverPort, "serverPort", serverPort, "server run in this port")
+	flag.Parse()
+
 	if pSQL == nil {
-		pSQL, err = db.NewPostgresDB(ctx, "localhost", "5432", "avito", "0000", "avitodb")
+		pSQL, err = db.NewPostgresDB(ctx, dbHost, dbPort, dbUsername, dbPassword, dbName)
 		if err != nil {
-			log.Fatal().Err(err).Msg("don't create connect with db")
+			log.Error().Err(err).Msg("don't create connect with db")
+			return
 		}
 	}
 	defer func() {
-		err = pSQL.Close(context.Background())
-		if err != nil {
-			log.Error().Err(err).Msg("db connection close error")
-		}
+		pSQL.Close()
 	}()
 
 	sv := service.NewService(pSQL)
@@ -50,9 +71,10 @@ func main() {
 	r.GET("/api/info", sr.Info)
 
 	go func() {
-		if err := fasthttp.ListenAndServe(":8080", r.Handler); err != nil {
-			log.Fatal().Err(err).Msg("server critical error")
+		if errServer := fasthttp.ListenAndServe(fmt.Sprintf(":%s", serverPort), r.Handler); errServer != nil {
+			log.Fatal().Err(errServer).Msg("server critical error")
 		}
 	}()
+	log.Info().Msg("SERVER SUCCESS START")
 	<-ctx.Done()
 }
