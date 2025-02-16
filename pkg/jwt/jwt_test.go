@@ -13,8 +13,8 @@ func TestGenerateTokenAccess(t *testing.T) {
 	}
 	for _, u := range users {
 		t.Run("Test correct create JWT", func(t *testing.T) {
-			token, err := GenerateTokenAccess(u)
-			t.Logf("%s\n", token)
+			_, err := GenerateTokenAccess(u)
+			//t.Logf("%s\n", token)
 			assert.Nil(t, err)
 		})
 	}
@@ -22,14 +22,14 @@ func TestGenerateTokenAccess(t *testing.T) {
 
 func TestGetInfoFromToken(t *testing.T) {
 	users := []string{
-		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiRGVuaXMifQ.fXfpc4ZIVQM7f_BF-E0zIDNPHPXqDIK3H87VX4wLhu8",
-		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiZGVuaXMuemhpbGkifQ.PUH6RxRKQ4rFoQvQqHumjFzrQTiES_AGZEww5camtHE",
-		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiMTIzMUBBU0RBU2FjenhjIn0.Bln1anwnkruAlmvCEqEzzLb3vlJ4pjjch57XZ0o-pLs",
+		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiRGVuaXMifQ.Xd2wHTWC2a4F0EsdwTLOZInC5fk9BHbi2UbR4XgyjlY",
+		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiZGVuaXMuemhpbGkifQ.tIV14f8XbXvg8eMdoLpx94P5fVFqvjZUyqByl3WmDT0",
+		"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiMTIzMUBBU0RBU2FjenhjIn0.Yr07okh7J7rjBEOKr0Msuz1KobW5CSR1d7NmIpBDeuc",
 	}
 	for _, u := range users {
-		t.Run("Test correct create JWT", func(t *testing.T) {
-			user, err := GetInfoFromToken(u)
-			t.Logf("%s\n", user.User)
+		t.Run("Test get info from JWT", func(t *testing.T) {
+			_, err := GetInfoFromToken(u)
+
 			assert.Nil(t, err)
 		})
 	}
